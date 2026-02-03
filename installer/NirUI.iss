@@ -28,7 +28,7 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 
 [Tasks]
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
-Name: "addtopath"; Description: "Add to PATH (for CLI usage)"; GroupDescription: "Other:"; Flags: unchecked
+Name: "addtopath"; Description: "Add to PATH (for CLI usage)"; GroupDescription: "Other:"; Flags: checkedonce
 
 [Files]
 Source: "..\build\Release\NirUI.exe"; DestDir: "{app}"; Flags: ignoreversion
