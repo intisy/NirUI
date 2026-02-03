@@ -1,0 +1,143 @@
+name: Build and Release
+
+on:
+  push:
+    branches: [main, master]
+    tags:
+      - 'v*'
+  pull_request:
+    branches: [main, master]
+  workflow_dispatch:
+
+env:
+  BUILD_TYPE: Release
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Setup MSVC
+      uses: microsoft/setup-msbuild@v2
+
+    - name: Configure CMake
+      run: cmake -B build -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }}
+
+    - name: Build
+      run: cmake --build build --config ${{ env.BUILD_TYPE }}
+
+    - name: Upload Build Artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: NirUI-Windows
+        path: |
+          build/Release/NirUI.exe
+          build/Release/NirUI_cli.exe
+
+  release:
+    needs: build
+    runs-on: windows-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Download Artifacts
+      uses: actions/download-artifact@v4
+      with:
+        name: NirUI-Windows
+        path: release
+
+    - name: Create ZIP
+      run: |
+        Compress-Archive -Path release/* -DestinationPath NirUI-${{ github.ref_name }}-portable.zip
+
+    - name: Install Inno Setup
+      run: |
+        choco install innosetup -y
+
+    - name: Setup MSVC
+      uses: microsoft/setup-msbuild@v2
+
+    - name: Configure CMake
+      run: cmake -B build -DCMAKE_BUILD_TYPE=Release
+
+    - name: Build
+      run: cmake --build build --config Release
+
+    - name: Create placeholder files
+      run: |
+        New-Item -ItemType Directory -Force -Path assets
+        New-Item -ItemType Directory -Force -Path dist
+        if (-not (Test-Path "LICENSE")) { "MIT License" | Out-File -FilePath "LICENSE" }
+        if (-not (Test-Path "assets/icon.ico")) {
+          # Create a minimal valid ICO file (1x1 pixel)
+          $bytes = [byte[]](0,0,1,0,1,0,1,1,0,0,1,0,24,0,30,0,0,0,22,0,0,0,40,0,0,0,1,0,0,0,2,0,0,0,1,0,24,0,0,0,0,0,4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0)
+          [IO.File]::WriteAllBytes("assets/icon.ico", $bytes)
+        }
+
+    - name: Build Installer
+      run: |
+        & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" installer\NirUI.iss
+      continue-on-error: true
+
+    - name: Get version from tag
+      id: version
+      run: |
+        $version = "${{ github.ref_name }}".TrimStart('v')
+        echo "VERSION=$version" >> $env:GITHUB_OUTPUT
+
+    - name: Create Release
+      uses: softprops/action-gh-release@v1
+      with:
+        name: NirUI ${{ github.ref_name }}
+        draft: false
+        prerelease: false
+        generate_release_notes: true
+        files: |
+          NirUI-${{ github.ref_name }}-portable.zip
+          dist/NirUI-*-Setup.exe
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  build-installer-local:
+    needs: build
+    runs-on: windows-latest
+    if: github.event_name == 'workflow_dispatch'
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Download Artifacts
+      uses: actions/download-artifact@v4
+      with:
+        name: NirUI-Windows
+        path: build/Release
+
+    - name: Install Inno Setup
+      run: choco install innosetup -y
+
+    - name: Create placeholder files
+      run: |
+        New-Item -ItemType Directory -Force -Path assets
+        New-Item -ItemType Directory -Force -Path dist
+        if (-not (Test-Path "LICENSE")) { "MIT License" | Out-File -FilePath "LICENSE" }
+        if (-not (Test-Path "assets/icon.ico")) {
+          $bytes = [byte[]](0,0,1,0,1,0,1,1,0,0,1,0,24,0,30,0,0,0,22,0,0,0,40,0,0,0,1,0,0,0,2,0,0,0,1,0,24,0,0,0,0,0,4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0)
+          [IO.File]::WriteAllBytes("assets/icon.ico", $bytes)
+        }
+
+    - name: Build Installer
+      run: |
+        & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" installer\NirUI.iss
+
+    - name: Upload Installer
+      uses: actions/upload-artifact@v4
+      with:
+        name: NirUI-Installer
+        path: dist/NirUI-*-Setup.exe

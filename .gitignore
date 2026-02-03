@@ -1,1 +1,44 @@
-/.idea
+# Build directories
+build/
+cmake-build-*/
+out/
+dist/
+
+# IDE
+.idea/
+.vs/
+.vscode/
+*.user
+*.suo
+*.sln
+*.vcxproj*
+
+# Executables
+*.exe
+*.dll
+*.lib
+*.pdb
+*.ilk
+*.exp
+
+# Sync conflicts
+*.sync-conflict-*
+
+# NirCmd binary
+nircmd.exe
+nircmd.chm
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# CMake
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+Makefile
+compile_commands.json
+
+# Dependencies (fetched by CMake)
+_deps/

@@ -2,9 +2,15 @@
 
 A modern graphical and command-line wrapper for [NirCmd](https://www.nirsoft.net/utils/nircmd.html) built with C++20 and Dear ImGui.
 
+[![Build](https://github.com/yourusername/NirUI/actions/workflows/build.yml/badge.svg)](https://github.com/yourusername/NirUI/actions/workflows/build.yml)
 ![Windows](https://img.shields.io/badge/platform-Windows-blue)
 ![C++20](https://img.shields.io/badge/C%2B%2B-20-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
+
+## Download
+
+- **[Latest Release](https://github.com/yourusername/NirUI/releases/latest)** - Installer or portable ZIP
+- **[All Releases](https://github.com/yourusername/NirUI/releases)**
 
 ## Features
 
