@@ -43,6 +43,7 @@ NirUI_cli --list-category "Window Management"
 - **Favorites** - Quick access to frequently managed windows
 - **Bulk Actions** - Apply commands to multiple windows via App Groups
 - **Window Picker** - Select windows from a live list
+- **Folder Targeting** - Target all processes running from a specific folder (with optional subfolder recursion)
 
 ## Screenshots
 
@@ -88,8 +89,16 @@ NirUI_cli --groups                     # List all groups
 NirUI_cli --create-group NAME          # Create a group
 NirUI_cli --delete-group NAME          # Delete a group
 NirUI_cli --add-app GROUP NAME TYPE VALUE
+NirUI_cli --add-app GROUP NAME folder "C:\Games" --recursive  # Target all exes in folder
 NirUI_cli --remove-app GROUP NAME
 NirUI_cli --run-group GROUP ACTION     # Actions: min, max, close, hide, show, freeze, unfreeze
+
+# Target Types for App Groups
+# process - Match by executable name (e.g., Code.exe)
+# class   - Match by window class (e.g., Chrome_WidgetWin_1)
+# title   - Match by exact window title
+# ititle  - Match by partial title (case-insensitive)
+# folder  - Match all executables in a folder (use --recursive for subfolders)
 ```
 
 ## Custom Commands

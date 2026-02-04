@@ -10,6 +10,7 @@ struct AppEntry {
     std::string name;
     std::string targetType;
     std::string targetValue;
+    bool recursive = false;
 };
 
 struct AppGroup {
@@ -32,7 +33,8 @@ public:
     bool CreateGroup(const std::string& name);
     bool DeleteGroup(const std::string& name);
     bool AddApp(const std::string& groupName, const std::string& appName, 
-                const std::string& targetType, const std::string& targetValue);
+                const std::string& targetType, const std::string& targetValue,
+                bool recursive = false);
     bool RemoveApp(const std::string& groupName, const std::string& appName);
     
 private:

@@ -31,6 +31,7 @@ struct CliOptions {
     std::string appTargetType;
     std::string appTargetValue;
     std::string appGroupAction;
+    bool appRecursive = false;
 };
 
 class CliParser {

@@ -86,6 +86,9 @@ CliOptions CliParser::Parse(int argc, char* argv[]) {
                 options.appTargetValue = argv[++i];
             }
         }
+        else if (arg == "--recursive" || arg == "-r") {
+            options.appRecursive = true;
+        }
         else if (arg == "--remove-app") {
             options.removeFromAppGroup = true;
             if (i + 2 < argc) {
@@ -142,7 +145,8 @@ void CliParser::PrintHelp() const {
     std::cout << "  --create-group NAME     Create a new app group\n";
     std::cout << "  --delete-group NAME     Delete an app group\n";
     std::cout << "  --add-app GROUP NAME TYPE VALUE\n";
-    std::cout << "                          Add app to group (TYPE: process|class|title|ititle)\n";
+    std::cout << "                          Add app to group (TYPE: process|class|title|ititle|folder)\n";
+    std::cout << "  --recursive, -r         Include subfolders (use with --add-app folder)\n";
     std::cout << "  --remove-app GROUP NAME Remove app from group\n";
     std::cout << "  --run-group GROUP ACTION\n";
     std::cout << "                          Run action on group (min|max|close|hide|show|freeze|unfreeze)\n";
@@ -160,6 +164,7 @@ void CliParser::PrintHelp() const {
     std::cout << "  " << m_programName << " --create-group Coding\n";
     std::cout << "  " << m_programName << " --add-app Coding \"VS Code\" process Code.exe\n";
     std::cout << "  " << m_programName << " --add-app Coding CLion process clion64.exe\n";
+    std::cout << "  " << m_programName << " --add-app Coding Games folder \"C:\\Games\" --recursive\n";
     std::cout << "  " << m_programName << " --run-group Coding min    Minimize all coding apps\n";
     std::cout << "  " << m_programName << " --run-group Coding freeze Hide and suspend all\n";
     std::cout << "\n";
@@ -304,7 +309,8 @@ void CliParser::PrintAppGroupsHelp() const {
     std::cout << "  process  - Match by executable name (e.g., Code.exe)\n";
     std::cout << "  class    - Match by window class (e.g., Chrome_WidgetWin_1)\n";
     std::cout << "  title    - Match by exact window title\n";
-    std::cout << "  ititle   - Match by partial title (case-insensitive)\n\n";
+    std::cout << "  ititle   - Match by partial title (case-insensitive)\n";
+    std::cout << "  folder   - Match all processes in a folder (use --recursive for subfolders)\n\n";
     std::cout << "Actions:\n";
     std::cout << "  min      - Minimize all windows\n";
     std::cout << "  max      - Maximize all windows\n";

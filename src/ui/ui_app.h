@@ -41,6 +41,7 @@ struct FrozenWindow {
 struct WindowInfo {
     std::string title;
     std::string processName;
+    std::string processPath;
     std::string className;
     unsigned long long hwnd;
     unsigned long processId;
@@ -77,7 +78,7 @@ private:
     void DrawWindowTargetSelector(const std::string& paramName, std::string& targetType, std::string& targetValue);
     void DrawRecentValuesPopup(const std::string& paramKey, std::string& currentValue);
     void RefreshWindowList();
-    void FreezeWindow(const std::string& targetType, const std::string& targetValue, const std::string& processName, const std::string& className = "", const std::string& windowTitle = "");
+    void FreezeWindow(const std::string& targetType, const std::string& targetValue, const std::string& processName, const std::string& className = "", const std::string& windowTitle = "", bool recursive = false);
     void UnfreezeWindow(const FrozenWindow& fw);
     void ToggleFavorite(const std::string& processName);
     void SaveFavorites();

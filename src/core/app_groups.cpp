@@ -30,11 +30,18 @@ void AppGroupsManager::Load() {
         } else if (currentGroup && !line.empty()) {
             size_t pos1 = line.find('|');
             size_t pos2 = line.find('|', pos1 + 1);
+            size_t pos3 = line.find('|', pos2 + 1);
             if (pos1 != std::string::npos && pos2 != std::string::npos) {
                 AppEntry entry;
                 entry.name = line.substr(0, pos1);
                 entry.targetType = line.substr(pos1 + 1, pos2 - pos1 - 1);
-                entry.targetValue = line.substr(pos2 + 1);
+                if (pos3 != std::string::npos) {
+                    entry.targetValue = line.substr(pos2 + 1, pos3 - pos2 - 1);
+                    entry.recursive = (line.substr(pos3 + 1) == "1");
+                } else {
+                    entry.targetValue = line.substr(pos2 + 1);
+                    entry.recursive = false;
+                }
                 currentGroup->apps.push_back(entry);
             }
         }
@@ -51,7 +58,7 @@ void AppGroupsManager::Save() {
     for (const auto& group : m_groups) {
         file << "[GROUP]" << group.name << "\n";
         for (const auto& app : group.apps) {
-            file << app.name << "|" << app.targetType << "|" << app.targetValue << "\n";
+            file << app.name << "|" << app.targetType << "|" << app.targetValue << "|" << (app.recursive ? "1" : "0") << "\n";
         }
     }
 }
@@ -86,7 +93,8 @@ bool AppGroupsManager::DeleteGroup(const std::string& name) {
 }
 
 bool AppGroupsManager::AddApp(const std::string& groupName, const std::string& appName,
-                              const std::string& targetType, const std::string& targetValue) {
+                              const std::string& targetType, const std::string& targetValue,
+                              bool recursive) {
     AppGroup* group = FindGroup(groupName);
     if (!group) return false;
     
@@ -94,6 +102,7 @@ bool AppGroupsManager::AddApp(const std::string& groupName, const std::string& a
     entry.name = appName;
     entry.targetType = targetType;
     entry.targetValue = targetValue;
+    entry.recursive = recursive;
     group->apps.push_back(entry);
     return true;
 }

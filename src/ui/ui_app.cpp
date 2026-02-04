@@ -7,6 +7,7 @@
 
 #include <windows.h>
 #include <dwmapi.h>
+#include <shlobj.h>
 #include <d3d11.h>
 #include <dxgi.h>
 #include <tchar.h>
@@ -1386,8 +1387,13 @@ void UIApp::DrawAppGroupEditor() {
                 
                 ImGui::Text("%s", app.name.c_str());
                 ImGui::SameLine();
-                ImGui::TextColored(ImVec4(0.5f, 0.5f, 0.5f, 1.0f), "[%s: %s]", 
-                                  app.targetType.c_str(), app.targetValue.c_str());
+                if (app.targetType == "folder" && app.recursive) {
+                    ImGui::TextColored(ImVec4(0.5f, 0.5f, 0.5f, 1.0f), "[%s: %s] (recursive)", 
+                                      app.targetType.c_str(), app.targetValue.c_str());
+                } else {
+                    ImGui::TextColored(ImVec4(0.5f, 0.5f, 0.5f, 1.0f), "[%s: %s]", 
+                                      app.targetType.c_str(), app.targetValue.c_str());
+                }
                 ImGui::SameLine(ImGui::GetWindowWidth() - 40);
                 ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.6f, 0.2f, 0.2f, 1.0f));
                 if (ImGui::SmallButton("X")) {
@@ -1407,6 +1413,8 @@ void UIApp::DrawAppGroupEditor() {
         
         ImGui::Spacing();
         
+        static bool newAppRecursive = true;
+        
         if (editGroup) {
             ImGui::Text("Add Application:");
             
@@ -1414,14 +1422,46 @@ void UIApp::DrawAppGroupEditor() {
             ImGui::InputTextWithHint("##appname", "Display name", m_newAppName, sizeof(m_newAppName));
             
             ImGui::SameLine();
-            static const char* targetTypes[] = { "process", "class", "title", "ititle" };
+            static const char* targetTypes[] = { "process", "class", "title", "ititle", "folder" };
             ImGui::SetNextItemWidth(100);
             ImGui::Combo("##targettype", &m_newAppTargetType, targetTypes, IM_ARRAYSIZE(targetTypes));
             
-            ImGui::SetNextItemWidth(-140);
-            ImGui::InputTextWithHint("##appvalue", "e.g. code.exe or Code", m_newAppValue, sizeof(m_newAppValue));
+            bool isFolder = (m_newAppTargetType == 4);
             
-            ImGui::SameLine();
+            if (isFolder) {
+                ImGui::SetNextItemWidth(-1);
+                ImGui::InputTextWithHint("##appvalue", "e.g. C:\\Games", m_newAppValue, sizeof(m_newAppValue));
+                
+                if (ImGui::Button("Browse##folder")) {
+                    BROWSEINFOA bi = {};
+                    bi.lpszTitle = "Select Folder";
+                    bi.ulFlags = BIF_RETURNONLYFSDIRS | BIF_NEWDIALOGSTYLE;
+                    LPITEMIDLIST pidl = SHBrowseForFolderA(&bi);
+                    if (pidl) {
+                        char path[MAX_PATH] = {};
+                        if (SHGetPathFromIDListA(pidl, path)) {
+                            strncpy_s(m_newAppValue, path, sizeof(m_newAppValue) - 1);
+                            if (strlen(m_newAppName) == 0) {
+                                std::string folderName = path;
+                                size_t lastSlash = folderName.find_last_of("\\/");
+                                if (lastSlash != std::string::npos) {
+                                    folderName = folderName.substr(lastSlash + 1);
+                                }
+                                strncpy_s(m_newAppName, folderName.c_str(), sizeof(m_newAppName) - 1);
+                            }
+                        }
+                        CoTaskMemFree(pidl);
+                    }
+                }
+                ImGui::SameLine();
+                ImGui::Checkbox("Recursive", &newAppRecursive);
+                ImGui::SameLine();
+            } else {
+                ImGui::SetNextItemWidth(-120);
+                ImGui::InputTextWithHint("##appvalue", "e.g. code.exe or Code", m_newAppValue, sizeof(m_newAppValue));
+                ImGui::SameLine();
+            }
+            
             if (ImGui::Button("Pick##appgroup")) {
                 RefreshWindowList();
                 ImGui::OpenPopup("AppGroupWindowPicker");
@@ -1486,10 +1526,11 @@ void UIApp::DrawAppGroupEditor() {
             }
             
             ImGui::SameLine();
-            if (ImGui::Button("Add", ImVec2(50, 0))) {
+            if (ImGui::Button("Add")) {
                 if (strlen(m_newAppName) > 0 && strlen(m_newAppValue) > 0) {
                     m_appGroupsManager.AddApp(editGroup->name, m_newAppName, 
-                                             targetTypes[m_newAppTargetType], m_newAppValue);
+                                             targetTypes[m_newAppTargetType], m_newAppValue,
+                                             isFolder && newAppRecursive);
                     m_newAppName[0] = '\0';
                     m_newAppValue[0] = '\0';
                 }
@@ -1497,7 +1538,7 @@ void UIApp::DrawAppGroupEditor() {
             
             ImGui::Spacing();
             ImGui::TextColored(ImVec4(0.5f, 0.5f, 0.5f, 1.0f), 
-                "Target types: process=exe name, class=window class, title/ititle=window title");
+                "Target: process=exe, class=window class, title=title, folder=all exes in folder");
         }
         
         ImGui::Spacing();
@@ -1745,7 +1786,8 @@ void UIApp::DrawWindowManagerPanel() {
                         } else {
                             if (ImGui::SmallButton("Freeze")) {
                                 FreezeWindow(app.targetType, app.targetValue, 
-                                            app.targetType == "process" ? app.targetValue : "");
+                                            app.targetType == "process" ? app.targetValue : "",
+                                            "", "", app.recursive);
                             }
                         }
                         
@@ -1832,7 +1874,32 @@ void UIApp::DrawWindowManagerPanel() {
     ImGui::End();
 }
 
-void UIApp::FreezeWindow(const std::string& targetType, const std::string& targetValue, const std::string& processName, const std::string& className, const std::string& windowTitle) {
+static bool PathStartsWith(const std::string& path, const std::string& prefix, bool recursive) {
+    std::string normPath = path;
+    std::string normPrefix = prefix;
+    for (char& c : normPath) if (c == '/') c = '\\';
+    for (char& c : normPrefix) if (c == '/') c = '\\';
+    while (!normPrefix.empty() && normPrefix.back() == '\\') normPrefix.pop_back();
+    
+    if (normPath.length() <= normPrefix.length()) return false;
+    
+    std::string pathLower = normPath;
+    std::string prefixLower = normPrefix;
+    for (char& c : pathLower) c = static_cast<char>(tolower(c));
+    for (char& c : prefixLower) c = static_cast<char>(tolower(c));
+    
+    if (pathLower.substr(0, prefixLower.length()) != prefixLower) return false;
+    if (normPath[prefixLower.length()] != '\\') return false;
+    
+    if (!recursive) {
+        std::string remainder = normPath.substr(prefixLower.length() + 1);
+        if (remainder.find('\\') != std::string::npos) return false;
+    }
+    
+    return true;
+}
+
+void UIApp::FreezeWindow(const std::string& targetType, const std::string& targetValue, const std::string& processName, const std::string& className, const std::string& windowTitle, bool recursive) {
     RefreshWindowList();
     
     std::vector<WindowInfo> matchingWindows;
@@ -1848,6 +1915,9 @@ void UIApp::FreezeWindow(const std::string& targetType, const std::string& targe
             std::stringstream ss;
             ss << "0x" << std::hex << win.hwnd;
             if (ss.str() == targetValue) match = true;
+        }
+        else if (targetType == "folder" && !win.processPath.empty()) {
+            match = PathStartsWith(win.processPath, targetValue, recursive);
         }
         
         if (match) {
@@ -1971,12 +2041,14 @@ static BOOL CALLBACK EnumWindowsCallback(HWND hwnd, LPARAM lParam) {
     if (processId == 0) return TRUE;
     
     std::string procName;
+    std::string procPath;
     HANDLE hProcess = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, FALSE, processId);
     if (hProcess) {
         char processPath[MAX_PATH] = {};
         DWORD size = MAX_PATH;
         if (QueryFullProcessImageNameA(hProcess, 0, processPath, &size)) {
-            procName = processPath;
+            procPath = processPath;
+            procName = procPath;
             size_t lastSlash = procName.find_last_of("\\/");
             if (lastSlash != std::string::npos) {
                 procName = procName.substr(lastSlash + 1);
@@ -1991,6 +2063,7 @@ static BOOL CALLBACK EnumWindowsCallback(HWND hwnd, LPARAM lParam) {
     WindowInfo info;
     info.title = title;
     info.processName = procName;
+    info.processPath = procPath;
     info.className = className;
     info.hwnd = reinterpret_cast<unsigned long long>(hwnd);
     info.processId = processId;
@@ -2106,7 +2179,8 @@ void UIApp::ExecuteOnAppGroup(const std::string& groupName, const std::string& a
     for (const auto& app : group->apps) {
         if (isFreeze) {
             FreezeWindow(app.targetType, app.targetValue, 
-                        app.targetType == "process" ? app.targetValue : "");
+                        app.targetType == "process" ? app.targetValue : "",
+                        "", "", app.recursive);
         }
         else if (isUnfreeze) {
             auto it = std::find_if(m_frozenWindows.begin(), m_frozenWindows.end(),

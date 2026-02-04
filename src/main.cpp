@@ -210,13 +210,15 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
         if (options.appGroupName.empty() || options.appName.empty() || 
             options.appTargetType.empty() || options.appTargetValue.empty()) {
             std::cerr << "Error: Missing parameters.\n";
-            std::cerr << "Usage: --add-app GROUP NAME TYPE VALUE\n";
+            std::cerr << "Usage: --add-app GROUP NAME TYPE VALUE [--recursive]\n";
             return 1;
         }
         if (appGroups.AddApp(options.appGroupName, options.appName, 
-                            options.appTargetType, options.appTargetValue)) {
+                            options.appTargetType, options.appTargetValue,
+                            options.appRecursive)) {
             appGroups.Save();
-            std::cout << "Added '" << options.appName << "' to group '" << options.appGroupName << "'\n";
+            std::string recursiveStr = (options.appTargetType == "folder" && options.appRecursive) ? " (recursive)" : "";
+            std::cout << "Added '" << options.appName << "' to group '" << options.appGroupName << "'" << recursiveStr << "\n";
             return 0;
         } else {
             std::cerr << "Error: Group not found.\n";
