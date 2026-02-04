@@ -531,7 +531,7 @@ void UIApp::DrawSidebar() {
 }
 
 void UIApp::DrawWindowTargetSelector(const std::string& paramName, std::string& targetType, std::string& targetValue) {
-    static const char* windowTargetTypes[] = { "title", "ititle", "class", "process", "handle", "active", "foreground", "alltop" };
+    static const char* windowTargetTypes[] = { "title", "ititle", "class", "process", "handle", "folder", "active", "foreground", "alltop" };
     
     ImGui::Text("Target Type:");
     ImGui::SetNextItemWidth(150);
@@ -641,6 +641,16 @@ void UIApp::DrawMainPanel() {
                             value = param.defaultValue;
                         }
                         
+                        // Skip recursive parameter unless folder type is selected
+                        if (param.name == "recursive") {
+                            std::string typeVal = m_parameterValues["find_type"];
+                            if (typeVal.empty()) typeVal = m_parameterValues["target_type"];
+                            if (typeVal != "folder") {
+                                ImGui::PopID();
+                                continue;
+                            }
+                        }
+                        
                         ImGui::Text("%s%s:", param.name.c_str(), param.required ? "*" : "");
                         ImGui::SameLine();
                         ImGui::TextDisabled("(?)");
@@ -652,10 +662,24 @@ void UIApp::DrawMainPanel() {
                         
                         bool isWindowFindType = (param.name == "find_type" || param.name == "parent_find_type" || param.name == "child_find_type");
                         bool isWindowFindValue = (param.name == "find_value" || param.name == "parent_find_value" || param.name == "child_find_value");
+                        bool isGroupParam = (param.name == "group" && (cmd.name.substr(0, 6) == "group "));
                         
                         ImGui::SetNextItemWidth(isWindowFindValue ? -120 : -40);
                         
-                        if (param.type == ParamType::Choice && !param.choices.empty()) {
+                        // Group parameter - show combobox with existing groups
+                        if (isGroupParam) {
+                            const auto& groups = m_appGroupsManager.GetGroups();
+                            std::string preview = value.empty() ? (groups.empty() ? "<no groups>" : groups[0].name) : value;
+                            if (ImGui::BeginCombo("##groupcombo", preview.c_str())) {
+                                for (const auto& group : groups) {
+                                    if (ImGui::Selectable(group.name.c_str(), value == group.name)) {
+                                        value = group.name;
+                                    }
+                                }
+                                ImGui::EndCombo();
+                            }
+                        }
+                        else if (param.type == ParamType::Choice && !param.choices.empty()) {
                             if (ImGui::BeginCombo("##combo", value.empty() ? param.choices[0].c_str() : value.c_str())) {
                                 for (const auto& choice : param.choices) {
                                     if (ImGui::Selectable(choice.c_str(), value == choice)) {
@@ -780,6 +804,13 @@ void UIApp::DrawMainPanel() {
                 
                 std::string cmdLine = cmd.name;
                 for (const auto& param : cmd.parameters) {
+                    // Skip recursive if not folder type
+                    if (param.name == "recursive") {
+                        std::string typeVal = m_parameterValues["find_type"];
+                        if (typeVal.empty()) typeVal = m_parameterValues["target_type"];
+                        if (typeVal != "folder") continue;
+                    }
+                    
                     auto it = m_parameterValues.find(param.name);
                     if (it != m_parameterValues.end() && !it->second.empty()) {
                         cmdLine += " ";
@@ -1086,20 +1117,46 @@ void UIApp::DrawStatusBar() {
     ImGui::PopStyleVar();
 }
 
+static std::string ExtractQuotedOrWord(const std::string& str, size_t& pos) {
+    while (pos < str.length() && str[pos] == ' ') pos++;
+    if (pos >= str.length()) return "";
+    
+    if (str[pos] == '"') {
+        size_t end = str.find('"', pos + 1);
+        if (end != std::string::npos) {
+            std::string result = str.substr(pos + 1, end - pos - 1);
+            pos = end + 1;
+            return result;
+        }
+    }
+    size_t end = str.find(' ', pos);
+    if (end == std::string::npos) end = str.length();
+    std::string result = str.substr(pos, end - pos);
+    pos = end;
+    return result;
+}
+
 void UIApp::ExecuteCurrentCommand() {
     std::string command = m_customCommandBuffer;
     if (command.empty()) return;
     
-    if (command.substr(0, 7) == "freeze " && command.length() > 7) {
-        std::string rest = command.substr(7);
+    if (command.substr(0, 11) == "win freeze " && command.length() > 11) {
+        std::string rest = command.substr(11);
         size_t spacePos = rest.find(' ');
         if (spacePos != std::string::npos) {
             std::string findType = rest.substr(0, spacePos);
             std::string findValue = rest.substr(spacePos + 1);
-            if (findValue.front() == '"' && findValue.back() == '"') {
+            bool recursive = false;
+            size_t recPos = findValue.find(" recursive=");
+            if (recPos != std::string::npos) {
+                std::string recVal = findValue.substr(recPos + 11);
+                recursive = (recVal == "true" || recVal == "1");
+                findValue = findValue.substr(0, recPos);
+            }
+            if (!findValue.empty() && findValue.front() == '"' && findValue.back() == '"') {
                 findValue = findValue.substr(1, findValue.length() - 2);
             }
-            FreezeWindow(findType, findValue, findType == "process" ? findValue : "");
+            FreezeWindow(findType, findValue, findType == "process" ? findValue : "", "", "", recursive);
             
             ExecutionResult result;
             result.success = true;
@@ -1109,13 +1166,20 @@ void UIApp::ExecuteCurrentCommand() {
             return;
         }
     }
-    else if (command.substr(0, 9) == "unfreeze " && command.length() > 9) {
-        std::string rest = command.substr(9);
+    else if (command.substr(0, 13) == "win unfreeze " && command.length() > 13) {
+        std::string rest = command.substr(13);
         size_t spacePos = rest.find(' ');
         if (spacePos != std::string::npos) {
             std::string findType = rest.substr(0, spacePos);
             std::string findValue = rest.substr(spacePos + 1);
-            if (findValue.front() == '"' && findValue.back() == '"') {
+            bool recursive = false;
+            size_t recPos = findValue.find(" recursive=");
+            if (recPos != std::string::npos) {
+                std::string recVal = findValue.substr(recPos + 11);
+                recursive = (recVal == "true" || recVal == "1");
+                findValue = findValue.substr(0, recPos);
+            }
+            if (!findValue.empty() && findValue.front() == '"' && findValue.back() == '"') {
                 findValue = findValue.substr(1, findValue.length() - 2);
             }
             auto it = std::find_if(m_frozenWindows.begin(), m_frozenWindows.end(),
@@ -1139,28 +1203,95 @@ void UIApp::ExecuteCurrentCommand() {
             return;
         }
     }
-    else if (command.find("-all-group ") != std::string::npos) {
-        size_t spacePos = command.find(' ');
-        if (spacePos != std::string::npos) {
-            std::string action = command.substr(0, spacePos);
-            std::string groupName = command.substr(spacePos + 1);
-            
-            std::string groupAction;
-            if (action == "minimize-all-group") groupAction = "min";
-            else if (action == "freeze-all-group") groupAction = "freeze";
-            else if (action == "unfreeze-all-group") groupAction = "unfreeze";
-            
-            if (!groupAction.empty()) {
-                ExecuteOnAppGroup(groupName, groupAction);
-                
-                ExecutionResult result;
-                result.success = true;
-                result.output = "Executed " + action + " on group: " + groupName;
-                result.executionTimeMs = 0;
-                AddToHistory(command, result);
-                return;
+    else if (command.substr(0, 6) == "group ") {
+        ExecutionResult result;
+        result.success = true;
+        result.executionTimeMs = 0;
+        
+        std::string rest = command.substr(6);
+        size_t pos = 0;
+        std::string subCmd = ExtractQuotedOrWord(rest, pos);
+        
+        if (subCmd == "list") {
+            std::string output = "App Groups:\n";
+            for (const auto& group : m_appGroupsManager.GetGroups()) {
+                output += "  " + group.name + " (" + std::to_string(group.apps.size()) + " apps)\n";
+                for (const auto& app : group.apps) {
+                    output += "    - " + app.name + " [" + app.targetType + ": " + app.targetValue + "]";
+                    if (app.targetType == "folder" && app.recursive) output += " (recursive)";
+                    output += "\n";
+                }
+            }
+            result.output = output;
+        }
+        else if (subCmd == "create") {
+            std::string name = ExtractQuotedOrWord(rest, pos);
+            if (!name.empty()) {
+                if (m_appGroupsManager.CreateGroup(name)) {
+                    m_appGroupsManager.Save();
+                    result.output = "Created group: " + name;
+                } else {
+                    result.output = "Group already exists: " + name;
+                    result.success = false;
+                }
             }
         }
+        else if (subCmd == "delete") {
+            std::string name = ExtractQuotedOrWord(rest, pos);
+            if (!name.empty()) {
+                if (m_appGroupsManager.DeleteGroup(name)) {
+                    m_appGroupsManager.Save();
+                    result.output = "Deleted group: " + name;
+                } else {
+                    result.output = "Group not found: " + name;
+                    result.success = false;
+                }
+            }
+        }
+        else if (subCmd == "add") {
+            std::string groupName = ExtractQuotedOrWord(rest, pos);
+            std::string appName = ExtractQuotedOrWord(rest, pos);
+            std::string targetType = ExtractQuotedOrWord(rest, pos);
+            std::string targetValue = ExtractQuotedOrWord(rest, pos);
+            std::string recursiveStr = ExtractQuotedOrWord(rest, pos);
+            bool recursive = (recursiveStr.empty() || recursiveStr == "true" || recursiveStr == "1");
+            
+            if (!groupName.empty() && !appName.empty() && !targetType.empty() && !targetValue.empty()) {
+                if (m_appGroupsManager.AddApp(groupName, appName, targetType, targetValue, recursive)) {
+                    m_appGroupsManager.Save();
+                    result.output = "Added " + appName + " to " + groupName;
+                } else {
+                    result.output = "Group not found: " + groupName;
+                    result.success = false;
+                }
+            }
+        }
+        else if (subCmd == "remove") {
+            std::string groupName = ExtractQuotedOrWord(rest, pos);
+            std::string appName = ExtractQuotedOrWord(rest, pos);
+            if (!groupName.empty() && !appName.empty()) {
+                if (m_appGroupsManager.RemoveApp(groupName, appName)) {
+                    m_appGroupsManager.Save();
+                    result.output = "Removed " + appName + " from " + groupName;
+                } else {
+                    result.output = "Group or app not found";
+                    result.success = false;
+                }
+            }
+        }
+        else if (subCmd == "run") {
+            std::string groupName = ExtractQuotedOrWord(rest, pos);
+            std::string action = ExtractQuotedOrWord(rest, pos);
+            if (!groupName.empty() && !action.empty()) {
+                ExecuteOnAppGroup(groupName, action);
+                result.output = "Executed " + action + " on group: " + groupName;
+            }
+        }
+        
+        m_lastOutput = result.output;
+        m_lastError = result.success ? "" : result.output;
+        AddToHistory(command, result);
+        return;
     }
     
     auto result = m_nircmdManager->Execute(command);

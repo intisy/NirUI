@@ -103,15 +103,14 @@ NirUI_cli --run-group GROUP ACTION     # Actions: min, max, close, hide, show, f
 
 ## Custom Commands
 
-NirUI extends NirCmd with additional commands:
+NirUI extends NirCmd with compound commands in the Window Management category:
 
 | Command | Description |
 |---------|-------------|
-| `freeze` | Hide window and suspend its process |
-| `unfreeze` | Resume process and show window |
-| `freeze-all-group` | Freeze all apps in a group |
-| `unfreeze-all-group` | Unfreeze all apps in a group |
-| `minimize-all-group` | Minimize all apps in a group |
+| `win freeze` | Hide window and suspend its process |
+| `win unfreeze` | Resume process and show window |
+
+All window commands (`win min`, `win max`, `win hide`, `win show`, `win close`, `win freeze`, `win unfreeze`) support the `folder` target type to match all executables in a directory.
 
 ## Configuration
 

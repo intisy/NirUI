@@ -67,7 +67,7 @@ void NirCmdCommands::InitializeCommands() {
     InitInputCommands();
     InitDialogCommands();
     InitMiscCommands();
-    InitNirUICustomCommands();
+    InitAppGroupCommands();
 }
 
 void NirCmdCommands::InitVolumeCommands() {
@@ -422,8 +422,8 @@ void NirCmdCommands::InitWindowCommands() {
         "Close a window",
         "nircmd win close class \"Notepad\"",
         {
-            Parameter("find_type", "class, title, ititle, process, handle, active, alltop, alltopnodesktop", ParamType::Choice, true, "title",
-                     {"class", "title", "ititle", "process", "handle", "active", "alltop", "alltopnodesktop", "foreground", "desktop"}),
+            Parameter("find_type", "class, title, ititle, process, handle, folder, active, alltop", ParamType::Choice, true, "title",
+                     {"class", "title", "ititle", "process", "handle", "folder", "active", "alltop", "alltopnodesktop", "foreground", "desktop"}),
             Parameter("find_value", "Window identifier value", ParamType::String, true)
         },
         "Window Management"
@@ -435,7 +435,7 @@ void NirCmdCommands::InitWindowCommands() {
         "nircmd win hide class \"IEFrame\"",
         {
             Parameter("find_type", "How to find the window", ParamType::Choice, true, "title",
-                     {"class", "title", "ititle", "process", "handle", "active", "alltop"}),
+                     {"class", "title", "ititle", "process", "handle", "folder", "active", "alltop"}),
             Parameter("find_value", "Window identifier value", ParamType::String, true)
         },
         "Window Management"
@@ -447,7 +447,7 @@ void NirCmdCommands::InitWindowCommands() {
         "nircmd win show class \"IEFrame\"",
         {
             Parameter("find_type", "How to find the window", ParamType::Choice, true, "title",
-                     {"class", "title", "ititle", "process", "handle", "active", "alltop"}),
+                     {"class", "title", "ititle", "process", "handle", "folder", "active", "alltop"}),
             Parameter("find_value", "Window identifier value", ParamType::String, true)
         },
         "Window Management"
@@ -459,7 +459,7 @@ void NirCmdCommands::InitWindowCommands() {
         "nircmd win min title \"Calculator\"",
         {
             Parameter("find_type", "How to find the window", ParamType::Choice, true, "title",
-                     {"class", "title", "ititle", "process", "handle", "active", "alltop"}),
+                     {"class", "title", "ititle", "process", "handle", "folder", "active", "alltop"}),
             Parameter("find_value", "Window identifier value", ParamType::String, true)
         },
         "Window Management"
@@ -471,7 +471,7 @@ void NirCmdCommands::InitWindowCommands() {
         "nircmd win max title \"Calculator\"",
         {
             Parameter("find_type", "How to find the window", ParamType::Choice, true, "title",
-                     {"class", "title", "ititle", "process", "handle", "active", "alltop"}),
+                     {"class", "title", "ititle", "process", "handle", "folder", "active", "alltop"}),
             Parameter("find_value", "Window identifier value", ParamType::String, true)
         },
         "Window Management"
@@ -483,7 +483,7 @@ void NirCmdCommands::InitWindowCommands() {
         "nircmd win normal title \"Calculator\"",
         {
             Parameter("find_type", "How to find the window", ParamType::Choice, true, "title",
-                     {"class", "title", "ititle", "process", "handle", "active", "alltop"}),
+                     {"class", "title", "ititle", "process", "handle", "folder", "active", "alltop"}),
             Parameter("find_value", "Window identifier value", ParamType::String, true)
         },
         "Window Management"
@@ -495,7 +495,7 @@ void NirCmdCommands::InitWindowCommands() {
         "nircmd win activate title \"Calculator\"",
         {
             Parameter("find_type", "How to find the window", ParamType::Choice, true, "title",
-                     {"class", "title", "ititle", "process", "handle", "active", "alltop"}),
+                     {"class", "title", "ititle", "process", "handle", "folder", "active", "alltop"}),
             Parameter("find_value", "Window identifier value", ParamType::String, true)
         },
         "Window Management"
@@ -507,7 +507,7 @@ void NirCmdCommands::InitWindowCommands() {
         "nircmd win focus title \"Calculator\"",
         {
             Parameter("find_type", "How to find the window", ParamType::Choice, true, "title",
-                     {"class", "title", "ititle", "process", "handle", "active", "alltop"}),
+                     {"class", "title", "ititle", "process", "handle", "folder", "active", "alltop"}),
             Parameter("find_value", "Window identifier value", ParamType::String, true)
         },
         "Window Management"
@@ -519,7 +519,7 @@ void NirCmdCommands::InitWindowCommands() {
         "nircmd win center title \"Calculator\"",
         {
             Parameter("find_type", "How to find the window", ParamType::Choice, true, "title",
-                     {"class", "title", "ititle", "process", "handle", "alltop", "alltopnodesktop"}),
+                     {"class", "title", "ititle", "process", "handle", "folder", "alltop", "alltopnodesktop"}),
             Parameter("find_value", "Window identifier value", ParamType::String, true)
         },
         "Window Management"
@@ -531,7 +531,7 @@ void NirCmdCommands::InitWindowCommands() {
         "nircmd win move title \"Calculator\" 100 100",
         {
             Parameter("find_type", "How to find the window", ParamType::Choice, true, "title",
-                     {"class", "title", "ititle", "process", "handle", "active"}),
+                     {"class", "title", "ititle", "process", "handle", "folder", "active"}),
             Parameter("find_value", "Window identifier value", ParamType::String, true),
             Parameter("x", "X position", ParamType::Integer, true),
             Parameter("y", "Y position", ParamType::Integer, true)
@@ -545,7 +545,7 @@ void NirCmdCommands::InitWindowCommands() {
         "nircmd win setsize title \"Calculator\" 100 100 400 300",
         {
             Parameter("find_type", "How to find the window", ParamType::Choice, true, "title",
-                     {"class", "title", "ititle", "process", "handle", "active"}),
+                     {"class", "title", "ititle", "process", "handle", "folder", "active"}),
             Parameter("find_value", "Window identifier value", ParamType::String, true),
             Parameter("x", "X position", ParamType::Integer, true),
             Parameter("y", "Y position", ParamType::Integer, true),
@@ -561,7 +561,7 @@ void NirCmdCommands::InitWindowCommands() {
         "nircmd win trans title \"Calculator\" 200",
         {
             Parameter("find_type", "How to find the window", ParamType::Choice, true, "title",
-                     {"class", "title", "ititle", "process", "handle", "active"}),
+                     {"class", "title", "ititle", "process", "handle", "folder", "active"}),
             Parameter("find_value", "Window identifier value", ParamType::String, true),
             Parameter("transparency", "Transparency (0=invisible, 255=opaque)", ParamType::Integer, true)
         },
@@ -574,7 +574,7 @@ void NirCmdCommands::InitWindowCommands() {
         "nircmd win settopmost title \"Calculator\" 1",
         {
             Parameter("find_type", "How to find the window", ParamType::Choice, true, "title",
-                     {"class", "title", "ititle", "process", "handle", "active"}),
+                     {"class", "title", "ititle", "process", "handle", "folder", "active"}),
             Parameter("find_value", "Window identifier value", ParamType::String, true),
             Parameter("topmost", "1=topmost, 0=normal", ParamType::Choice, true, "1",
                      {"0", "1"})
@@ -588,7 +588,7 @@ void NirCmdCommands::InitWindowCommands() {
         "nircmd win flash title \"Calculator\"",
         {
             Parameter("find_type", "How to find the window", ParamType::Choice, true, "title",
-                     {"class", "title", "ititle", "process", "handle", "active"}),
+                     {"class", "title", "ititle", "process", "handle", "folder", "active"}),
             Parameter("find_value", "Window identifier value", ParamType::String, true)
         },
         "Window Management"
@@ -600,7 +600,7 @@ void NirCmdCommands::InitWindowCommands() {
         "nircmd win settext title \"Calculator\" \"New Title\"",
         {
             Parameter("find_type", "How to find the window", ParamType::Choice, true, "title",
-                     {"class", "title", "ititle", "process", "handle", "active"}),
+                     {"class", "title", "ititle", "process", "handle", "folder", "active"}),
             Parameter("find_value", "Window identifier value", ParamType::String, true),
             Parameter("new_text", "New window title", ParamType::String, true)
         },
@@ -613,7 +613,7 @@ void NirCmdCommands::InitWindowCommands() {
         "nircmd win redraw title \"Calculator\"",
         {
             Parameter("find_type", "How to find the window", ParamType::Choice, true, "title",
-                     {"class", "title", "ititle", "process", "handle", "active", "alltop"}),
+                     {"class", "title", "ititle", "process", "handle", "folder", "active", "alltop"}),
             Parameter("find_value", "Window identifier value", ParamType::String, true)
         },
         "Window Management"
@@ -625,7 +625,7 @@ void NirCmdCommands::InitWindowCommands() {
         "nircmd win +style title \"Calculator\" 0x00C00000",
         {
             Parameter("find_type", "How to find the window", ParamType::Choice, true, "title",
-                     {"class", "title", "ititle", "process", "handle", "active"}),
+                     {"class", "title", "ititle", "process", "handle", "folder", "active"}),
             Parameter("find_value", "Window identifier value", ParamType::String, true),
             Parameter("style", "Window style hex value", ParamType::String, true)
         },
@@ -638,7 +638,7 @@ void NirCmdCommands::InitWindowCommands() {
         "nircmd win -style title \"Calculator\" 0x00C00000",
         {
             Parameter("find_type", "How to find the window", ParamType::Choice, true, "title",
-                     {"class", "title", "ititle", "process", "handle", "active"}),
+                     {"class", "title", "ititle", "process", "handle", "folder", "active"}),
             Parameter("find_value", "Window identifier value", ParamType::String, true),
             Parameter("style", "Window style hex value to remove", ParamType::String, true)
         },
@@ -651,7 +651,7 @@ void NirCmdCommands::InitWindowCommands() {
         "nircmd win +exstyle title \"my computer\" 0x00400000",
         {
             Parameter("find_type", "How to find the window", ParamType::Choice, true, "title",
-                     {"class", "title", "ititle", "process", "handle", "active"}),
+                     {"class", "title", "ititle", "process", "handle", "folder", "active"}),
             Parameter("find_value", "Window identifier value", ParamType::String, true),
             Parameter("exstyle", "Extended style hex value", ParamType::String, true)
         },
@@ -664,7 +664,7 @@ void NirCmdCommands::InitWindowCommands() {
         "nircmd win -exstyle title \"Calculator\" 0x00400000",
         {
             Parameter("find_type", "How to find the window", ParamType::Choice, true, "title",
-                     {"class", "title", "ititle", "process", "handle", "active"}),
+                     {"class", "title", "ititle", "process", "handle", "folder", "active"}),
             Parameter("find_value", "Window identifier value", ParamType::String, true),
             Parameter("exstyle", "Extended style hex value to remove", ParamType::String, true)
         },
@@ -677,7 +677,7 @@ void NirCmdCommands::InitWindowCommands() {
         "nircmd win enable title \"Calculator\"",
         {
             Parameter("find_type", "How to find the window", ParamType::Choice, true, "title",
-                     {"class", "title", "ititle", "process", "handle", "active"}),
+                     {"class", "title", "ititle", "process", "handle", "folder", "active"}),
             Parameter("find_value", "Window identifier value", ParamType::String, true)
         },
         "Window Management"
@@ -689,7 +689,7 @@ void NirCmdCommands::InitWindowCommands() {
         "nircmd win disable title \"Calculator\"",
         {
             Parameter("find_type", "How to find the window", ParamType::Choice, true, "title",
-                     {"class", "title", "ititle", "process", "handle", "active"}),
+                     {"class", "title", "ititle", "process", "handle", "folder", "active"}),
             Parameter("find_value", "Window identifier value", ParamType::String, true)
         },
         "Window Management"
@@ -701,7 +701,7 @@ void NirCmdCommands::InitWindowCommands() {
         "nircmd win togglehide title \"Calculator\"",
         {
             Parameter("find_type", "How to find the window", ParamType::Choice, true, "title",
-                     {"class", "title", "ititle", "process", "handle", "active"}),
+                     {"class", "title", "ititle", "process", "handle", "folder", "active"}),
             Parameter("find_value", "Window identifier value", ParamType::String, true)
         },
         "Window Management"
@@ -713,7 +713,7 @@ void NirCmdCommands::InitWindowCommands() {
         "nircmd win togglemin title \"Calculator\"",
         {
             Parameter("find_type", "How to find the window", ParamType::Choice, true, "title",
-                     {"class", "title", "ititle", "process", "handle", "active"}),
+                     {"class", "title", "ititle", "process", "handle", "folder", "active"}),
             Parameter("find_value", "Window identifier value", ParamType::String, true)
         },
         "Window Management"
@@ -725,7 +725,7 @@ void NirCmdCommands::InitWindowCommands() {
         "nircmd win togglemax title \"Calculator\"",
         {
             Parameter("find_type", "How to find the window", ParamType::Choice, true, "title",
-                     {"class", "title", "ititle", "process", "handle", "active"}),
+                     {"class", "title", "ititle", "process", "handle", "folder", "active"}),
             Parameter("find_value", "Window identifier value", ParamType::String, true)
         },
         "Window Management"
@@ -753,7 +753,7 @@ void NirCmdCommands::InitWindowCommands() {
         "nircmd win sendmsg title \"Calculator\" 0x0010 0 0",
         {
             Parameter("find_type", "How to find the window", ParamType::Choice, true, "title",
-                     {"class", "title", "ititle", "process", "handle", "active"}),
+                     {"class", "title", "ititle", "process", "handle", "folder", "active"}),
             Parameter("find_value", "Window identifier value", ParamType::String, true),
             Parameter("msg", "Message ID (hex)", ParamType::String, true),
             Parameter("wparam", "WPARAM value", ParamType::String, true),
@@ -768,13 +768,114 @@ void NirCmdCommands::InitWindowCommands() {
         "nircmd win postmsg title \"Calculator\" 0x0010 0 0",
         {
             Parameter("find_type", "How to find the window", ParamType::Choice, true, "title",
-                     {"class", "title", "ititle", "process", "handle", "active"}),
+                     {"class", "title", "ititle", "process", "handle", "folder", "active"}),
             Parameter("find_value", "Window identifier value", ParamType::String, true),
             Parameter("msg", "Message ID (hex)", ParamType::String, true),
             Parameter("wparam", "WPARAM value", ParamType::String, true),
             Parameter("lparam", "LPARAM value", ParamType::String, true)
         },
         "Window Management"
+    ));
+    
+    cat.commands.push_back(Command(
+        "win freeze",
+        "Hide window and suspend its process (NirUI compound command)",
+        "win freeze process notepad.exe",
+        {
+            Parameter("find_type", "How to find the window", ParamType::Choice, true, "process",
+                     {"process", "class", "title", "ititle", "handle", "folder"}),
+            Parameter("find_value", "Window identifier or folder path", ParamType::String, true),
+            Parameter("recursive", "Include subfolders (only for folder type)", ParamType::Boolean, false, "true")
+        },
+        "Window Management"
+    ));
+    
+    cat.commands.push_back(Command(
+        "win unfreeze",
+        "Resume process and show its window (NirUI compound command)",
+        "win unfreeze process notepad.exe",
+        {
+            Parameter("find_type", "How to find the window", ParamType::Choice, true, "process",
+                     {"process", "class", "title", "ititle", "handle", "folder"}),
+            Parameter("find_value", "Window identifier or folder path", ParamType::String, true),
+            Parameter("recursive", "Include subfolders (only for folder type)", ParamType::Boolean, false, "true")
+        },
+        "Window Management"
+    ));
+    
+    s_categories.push_back(cat);
+}
+
+void NirCmdCommands::InitAppGroupCommands() {
+    Category cat;
+    cat.name = "App Groups";
+    cat.icon = "\xF0\x9F\x93\x82";
+    cat.description = "Manage application groups for batch window operations";
+    
+    cat.commands.push_back(Command(
+        "group list",
+        "List all app groups and their contents",
+        "group list",
+        {},
+        "App Groups"
+    ));
+    
+    cat.commands.push_back(Command(
+        "group create",
+        "Create a new app group",
+        "group create \"Coding\"",
+        {
+            Parameter("name", "Name of the group to create", ParamType::String, true)
+        },
+        "App Groups"
+    ));
+    
+    cat.commands.push_back(Command(
+        "group delete",
+        "Delete an app group",
+        "group delete \"Coding\"",
+        {
+            Parameter("name", "Name of the group to delete", ParamType::String, true)
+        },
+        "App Groups"
+    ));
+    
+    cat.commands.push_back(Command(
+        "group add",
+        "Add an application to a group",
+        "group add \"Coding\" \"VS Code\" process Code.exe",
+        {
+            Parameter("group", "Name of the group", ParamType::String, true),
+            Parameter("app_name", "Display name for the app", ParamType::String, true),
+            Parameter("target_type", "How to identify the app", ParamType::Choice, true, "process",
+                     {"process", "class", "title", "ititle", "folder"}),
+            Parameter("target_value", "Identifier value or folder path", ParamType::String, true),
+            Parameter("recursive", "Include subfolders (only for folder type)", ParamType::Boolean, false, "true")
+        },
+        "App Groups"
+    ));
+    
+    cat.commands.push_back(Command(
+        "group remove",
+        "Remove an application from a group",
+        "group remove \"Coding\" \"VS Code\"",
+        {
+            Parameter("group", "Name of the group", ParamType::String, true),
+            Parameter("app_name", "Display name of the app to remove", ParamType::String, true)
+        },
+        "App Groups"
+    ));
+    
+    cat.commands.push_back(Command(
+        "group run",
+        "Run a window action on all apps in a group",
+        "group run \"Coding\" freeze",
+        {
+            Parameter("group", "Name of the group", ParamType::String, true),
+            Parameter("action", "Action to perform on all apps", ParamType::Choice, true, "freeze",
+                     {"min", "max", "normal", "close", "hide", "show", "freeze", "unfreeze"})
+        },
+        "App Groups"
     ));
     
     s_categories.push_back(cat);
@@ -1678,7 +1779,7 @@ void NirCmdCommands::InitInputCommands() {
             Parameter("x", "X coordinate within window", ParamType::Integer, true),
             Parameter("y", "Y coordinate within window", ParamType::Integer, true),
             Parameter("find_type", "How to find the window", ParamType::Choice, true, "title",
-                     {"class", "title", "ititle", "process", "handle", "active"}),
+                     {"class", "title", "ititle", "process", "handle", "folder", "active"}),
             Parameter("find_value", "Window identifier", ParamType::String, true)
         },
         "Input Simulation"
@@ -1970,69 +2071,6 @@ void NirCmdCommands::InitMiscCommands() {
             Parameter("command", "Command name", ParamType::String, true)
         },
         "Miscellaneous"
-    ));
-    
-    s_categories.push_back(cat);
-}
-
-void NirCmdCommands::InitNirUICustomCommands() {
-    Category cat;
-    cat.name = "NirUI Custom";
-    cat.icon = "\xE2\xAD\x90"; // Star icon
-    cat.description = "Custom compound commands implemented by NirUI (multiple NirCmd commands)";
-    
-    cat.commands.push_back(Command(
-        "freeze",
-        "Hide a window and suspend its process (combines 'win hide' + 'suspendprocess')",
-        "freeze process notepad.exe",
-        {
-            Parameter("find_type", "How to find the window (process recommended)", ParamType::Choice, true, "process",
-                     {"process", "class", "title", "ititle"}),
-            Parameter("find_value", "Window identifier value", ParamType::String, true)
-        },
-        "NirUI Custom"
-    ));
-    
-    cat.commands.push_back(Command(
-        "unfreeze",
-        "Resume a suspended process and show its window (combines 'resumeprocess' + 'win show')",
-        "unfreeze process notepad.exe",
-        {
-            Parameter("find_type", "How to find the window (process recommended)", ParamType::Choice, true, "process",
-                     {"process", "class", "title", "ititle"}),
-            Parameter("find_value", "Window identifier value", ParamType::String, true)
-        },
-        "NirUI Custom"
-    ));
-    
-    cat.commands.push_back(Command(
-        "minimize-all-group",
-        "Minimize all windows in an App Group",
-        "minimize-all-group Coding",
-        {
-            Parameter("group_name", "Name of the App Group", ParamType::String, true)
-        },
-        "NirUI Custom"
-    ));
-    
-    cat.commands.push_back(Command(
-        "freeze-all-group",
-        "Freeze (hide + suspend) all apps in an App Group",
-        "freeze-all-group Distractions",
-        {
-            Parameter("group_name", "Name of the App Group", ParamType::String, true)
-        },
-        "NirUI Custom"
-    ));
-    
-    cat.commands.push_back(Command(
-        "unfreeze-all-group",
-        "Unfreeze (resume + show) all apps in an App Group",
-        "unfreeze-all-group Distractions",
-        {
-            Parameter("group_name", "Name of the App Group", ParamType::String, true)
-        },
-        "NirUI Custom"
     ));
     
     s_categories.push_back(cat);

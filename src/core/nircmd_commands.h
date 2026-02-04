@@ -74,7 +74,7 @@ private:
     static void InitInputCommands();
     static void InitDialogCommands();
     static void InitMiscCommands();
-    static void InitNirUICustomCommands();
+    static void InitAppGroupCommands();
 };
 
 } // namespace NirUI
