@@ -25,44 +25,25 @@ HttpDownloader::~HttpDownloader() {
 
 bool HttpDownloader::Download(const std::string& url, const std::string& outputPath,
                               std::function<void(int progress)> progressCallback) {
-    // Initialize WinINet
-    HINTERNET hInternet = InternetOpenA(
-        "NirUI/1.0",
-        INTERNET_OPEN_TYPE_PRECONFIG,
-        nullptr,
-        nullptr,
-        0
-    );
-    
+    HINTERNET hInternet = InternetOpenA("NirUI/1.0", INTERNET_OPEN_TYPE_PRECONFIG, nullptr, nullptr, 0);
     if (!hInternet) {
         m_lastError = "Failed to initialize WinINet. Error: " + GetWinError();
         return false;
     }
     
-    // Open URL
-    HINTERNET hUrl = InternetOpenUrlA(
-        hInternet,
-        url.c_str(),
-        nullptr,
-        0,
-        INTERNET_FLAG_RELOAD | INTERNET_FLAG_NO_CACHE_WRITE,
-        0
-    );
-    
+    HINTERNET hUrl = InternetOpenUrlA(hInternet, url.c_str(), nullptr, 0,
+                                       INTERNET_FLAG_RELOAD | INTERNET_FLAG_NO_CACHE_WRITE, 0);
     if (!hUrl) {
         m_lastError = "Failed to open URL. Error: " + GetWinError();
         InternetCloseHandle(hInternet);
         return false;
     }
     
-    // Get content length
     DWORD contentLength = 0;
     DWORD sizeOfDword = sizeof(DWORD);
     DWORD index = 0;
-    HttpQueryInfoA(hUrl, HTTP_QUERY_CONTENT_LENGTH | HTTP_QUERY_FLAG_NUMBER,
-                   &contentLength, &sizeOfDword, &index);
+    HttpQueryInfoA(hUrl, HTTP_QUERY_CONTENT_LENGTH | HTTP_QUERY_FLAG_NUMBER, &contentLength, &sizeOfDword, &index);
     
-    // Open output file
     std::ofstream outFile(outputPath, std::ios::binary);
     if (!outFile) {
         m_lastError = "Failed to create output file: " + outputPath;
@@ -71,7 +52,6 @@ bool HttpDownloader::Download(const std::string& url, const std::string& outputP
         return false;
     }
     
-    // Download data
     char buffer[8192];
     DWORD bytesRead;
     DWORD totalBytesRead = 0;
@@ -79,16 +59,12 @@ bool HttpDownloader::Download(const std::string& url, const std::string& outputP
     while (InternetReadFile(hUrl, buffer, sizeof(buffer), &bytesRead) && bytesRead > 0) {
         outFile.write(buffer, bytesRead);
         totalBytesRead += bytesRead;
-        
         if (progressCallback && contentLength > 0) {
-            int progress = static_cast<int>((totalBytesRead * 100) / contentLength);
-            progressCallback(progress);
+            progressCallback(static_cast<int>((totalBytesRead * 100) / contentLength));
         }
     }
     
     outFile.close();
-    
-    // Clean up
     InternetCloseHandle(hUrl);
     InternetCloseHandle(hInternet);
     

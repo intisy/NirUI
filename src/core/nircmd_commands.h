@@ -7,37 +7,24 @@
 
 namespace NirUI {
 
-// Parameter types for NirCmd commands
 enum class ParamType {
-    None,
-    String,
-    Integer,
-    FilePath,
-    FolderPath,
-    Choice,
-    Boolean,
-    KeyCombo,
-    Color,
-    Rectangle
+    None, String, Integer, FilePath, FolderPath, Choice, Boolean, KeyCombo, Color, Rectangle
 };
 
-// Parameter definition
 struct Parameter {
     std::string name;
     std::string description;
     ParamType type;
     bool required;
     std::string defaultValue;
-    std::vector<std::string> choices; // For Choice type
+    std::vector<std::string> choices;
     
     Parameter(const std::string& n, const std::string& desc, ParamType t, 
               bool req = true, const std::string& def = "", 
               const std::vector<std::string>& ch = {})
-        : name(n), description(desc), type(t), required(req), 
-          defaultValue(def), choices(ch) {}
+        : name(n), description(desc), type(t), required(req), defaultValue(def), choices(ch) {}
 };
 
-// Command definition
 struct Command {
     std::string name;
     std::string description;
@@ -51,15 +38,13 @@ struct Command {
         : name(n), description(desc), example(ex), parameters(params), category(cat) {}
 };
 
-// Category definition
 struct Category {
     std::string name;
-    std::string icon; // Unicode icon
+    std::string icon;
     std::string description;
     std::vector<Command> commands;
 };
 
-// All NirCmd commands organized by category
 class NirCmdCommands {
 public:
     static const std::vector<Category>& GetCategories();
@@ -71,7 +56,6 @@ private:
     static std::vector<Category> s_categories;
     static bool s_initialized;
     
-    // Category initialization functions
     static void InitVolumeCommands();
     static void InitMonitorCommands();
     static void InitSystemCommands();

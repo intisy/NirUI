@@ -59,9 +59,21 @@ UIApp::~UIApp() {
 }
 
 bool UIApp::InitWindow() {
-    WNDCLASSEXW wc = { sizeof(WNDCLASSEXW), CS_CLASSDC, WndProc, 0L, 0L,
-                      GetModuleHandle(nullptr), nullptr, nullptr, nullptr, nullptr,
-                      L"NirUI", nullptr };
+    HINSTANCE hInstance = GetModuleHandle(nullptr);
+    
+    HICON hIcon = LoadIconW(hInstance, MAKEINTRESOURCEW(1));
+    HICON hIconSm = (HICON)LoadImageW(hInstance, MAKEINTRESOURCEW(1), IMAGE_ICON, 
+                                       GetSystemMetrics(SM_CXSMICON), GetSystemMetrics(SM_CYSMICON), 
+                                       LR_DEFAULTCOLOR);
+    
+    WNDCLASSEXW wc = {};
+    wc.cbSize = sizeof(WNDCLASSEXW);
+    wc.style = CS_CLASSDC;
+    wc.lpfnWndProc = WndProc;
+    wc.hInstance = hInstance;
+    wc.hIcon = hIcon;
+    wc.hIconSm = hIconSm ? hIconSm : hIcon;
+    wc.lpszClassName = L"NirUI";
     RegisterClassExW(&wc);
 
     m_hwnd = CreateWindowW(wc.lpszClassName, L"NirUI - NirCmd Wrapper",
@@ -1824,6 +1836,7 @@ void UIApp::FreezeWindow(const std::string& targetType, const std::string& targe
     RefreshWindowList();
     
     std::vector<WindowInfo> matchingWindows;
+    std::set<DWORD> uniquePIDs;
     std::string capturedProcess = processName;
     
     for (const auto& win : m_windowList) {
@@ -1839,6 +1852,7 @@ void UIApp::FreezeWindow(const std::string& targetType, const std::string& targe
         
         if (match) {
             matchingWindows.push_back(win);
+            if (win.processId != 0) uniquePIDs.insert(win.processId);
             if (capturedProcess.empty()) capturedProcess = win.processName;
         }
     }
@@ -1858,6 +1872,7 @@ void UIApp::FreezeWindow(const std::string& targetType, const std::string& targe
         fw.className = win.className;
         fw.windowTitle = win.title;
         fw.hwnd = win.hwnd;
+        fw.processId = win.processId;
         fw.isFrozen = true;
         m_frozenWindows.push_back(fw);
     }
@@ -1873,23 +1888,37 @@ void UIApp::FreezeWindow(const std::string& targetType, const std::string& targe
         fw.className = className;
         fw.windowTitle = windowTitle;
         fw.hwnd = 0;
+        fw.processId = 0;
         fw.isFrozen = true;
         m_frozenWindows.push_back(fw);
     }
     
-    if (targetType == "process" || !capturedProcess.empty()) {
+    int suspendedCount = 0;
+    if (!uniquePIDs.empty()) {
+        for (DWORD pid : uniquePIDs) {
+            std::string suspendCmd = "suspendprocess /" + std::to_string(pid);
+            m_nircmdManager->Execute(suspendCmd);
+            suspendedCount++;
+        }
+    } else if (targetType == "process" || !capturedProcess.empty()) {
         std::string proc = capturedProcess.empty() ? targetValue : capturedProcess;
         std::string suspendCmd = "suspendprocess " + proc;
         m_nircmdManager->Execute(suspendCmd);
+        suspendedCount = 1;
     }
     
     int windowCount = matchingWindows.empty() ? 1 : static_cast<int>(matchingWindows.size());
-    m_lastOutput = "Frozen: " + targetValue + " (" + std::to_string(windowCount) + " window" + (windowCount > 1 ? "s)" : ")");
+    m_lastOutput = "Frozen: " + targetValue + " (" + std::to_string(windowCount) + " window" + 
+                   (windowCount > 1 ? "s" : "") + ", " + std::to_string(suspendedCount) + " process" +
+                   (suspendedCount > 1 ? "es" : "") + ")";
     m_lastError.clear();
 }
 
 void UIApp::UnfreezeWindow(const FrozenWindow& fw) {
-    if (!fw.processName.empty()) {
+    if (fw.processId != 0) {
+        std::string resumeCmd = "resumeprocess /" + std::to_string(fw.processId);
+        m_nircmdManager->Execute(resumeCmd);
+    } else if (!fw.processName.empty()) {
         std::string resumeCmd = "resumeprocess " + fw.processName;
         m_nircmdManager->Execute(resumeCmd);
     }

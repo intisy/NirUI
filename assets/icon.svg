@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 500">
+  <defs>
+    <!-- Deep Royal Blue Gradient -->
+    <linearGradient id="blueGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1e2a9d;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#3f6ddb;stop-opacity:1" />
+    </linearGradient>
+    
+    <!-- Bright Cyan Gradient -->
+    <linearGradient id="cyanGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#86e1f0;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#5bc5db;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+
+  <!-- 1. Right Vertical Bar (Cyan) -->
+  <rect x="310" y="100" width="90" height="300" fill="url(#cyanGrad)" />
+
+  <!-- 2. Left Vertical Bar (Dark Blue) -->
+  <rect x="100" y="100" width="90" height="300" fill="url(#blueGrad)" />
+
+  <!-- 3. The Diagonal Connection (Dark Blue) -->
+  <path d="M100 100 L190 100 L400 400 L310 400 Z" fill="url(#blueGrad)" />
+</svg>

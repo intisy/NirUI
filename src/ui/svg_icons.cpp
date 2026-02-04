@@ -202,7 +202,6 @@ ID3D11ShaderResourceView* SvgIconManager::LoadSvgFromMemory(const char* svgData,
     
     if (!image) return nullptr;
     
-    // Check for valid dimensions
     if (image->width <= 0 || image->height <= 0) {
         nsvgDelete(image);
         return nullptr;

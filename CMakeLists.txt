@@ -50,6 +50,13 @@ set(SOURCES
     src/utils/http_downloader.cpp
 )
 
+# Windows resource file (for icon)
+if(WIN32)
+    if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/assets/icon.ico")
+        set(RESOURCES src/resources.rc)
+    endif()
+endif()
+
 # Header files
 set(HEADERS
     src/core/nircmd_commands.h
@@ -62,7 +69,7 @@ set(HEADERS
 )
 
 # Create executable
-add_executable(${PROJECT_NAME} WIN32 ${SOURCES} ${HEADERS} ${IMGUI_SOURCES})
+add_executable(${PROJECT_NAME} WIN32 ${SOURCES} ${HEADERS} ${IMGUI_SOURCES} ${RESOURCES})
 
 # Include directories
 target_include_directories(${PROJECT_NAME} PRIVATE
@@ -109,6 +116,7 @@ target_link_libraries(${PROJECT_NAME}_cli PRIVATE
     d3d11
     dxgi
     d3dcompiler
+    dwmapi
     wininet
     urlmon
     shell32

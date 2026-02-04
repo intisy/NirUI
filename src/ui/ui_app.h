@@ -33,7 +33,8 @@ struct FrozenWindow {
     std::string processName;
     std::string className;
     std::string windowTitle;
-    unsigned long long hwnd;  // Window handle for reliable unfreezing
+    unsigned long long hwnd;
+    unsigned long processId;
     bool isFrozen;
 };
 
