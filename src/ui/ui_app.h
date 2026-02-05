@@ -36,6 +36,12 @@ struct FrozenWindow {
     unsigned long long hwnd;
     unsigned long processId;
     bool isFrozen;
+    bool wasMaximized = false;
+    bool wasMinimized = false;
+    int savedX = 0;
+    int savedY = 0;
+    int savedWidth = 0;
+    int savedHeight = 0;
 };
 
 struct WindowInfo {
@@ -55,6 +61,12 @@ public:
     ~UIApp();
     
     int Run();
+    bool ShouldMinimizeToTray() const { return m_minimizeToTray; }
+    void ShowFromTray();
+    void MinimizeToTray();
+    void RequestExit();
+    
+    static constexpr unsigned int WM_TRAYICON = 0x8000; // WM_APP
     
 private:
     bool InitWindow();
@@ -102,6 +114,11 @@ private:
     void LoadRecentValues();
     void SaveAppGroups();
     void LoadAppGroups();
+    void SaveSettings();
+    void LoadSettings();
+    void CreateTrayIcon();
+    void RemoveTrayIcon();
+    void UnfreezeAllWindows();
     
     void* m_hwnd = nullptr;
     
@@ -162,7 +179,14 @@ private:
     int m_windowWidth = 1280;
     int m_windowHeight = 800;
     
+    // Tray and exit settings
+    bool m_minimizeToTray = true;
+    bool m_unfreezeOnExit = true;
+    bool m_isMinimizedToTray = false;
+    bool m_trayIconCreated = false;
+    
     static constexpr int MAX_RECENT_VALUES = 10;
+    static constexpr unsigned int TRAY_UID = 1;
 };
 
 } // namespace NirUI

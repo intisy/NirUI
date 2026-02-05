@@ -8,6 +8,7 @@
 #include <windows.h>
 #include <dwmapi.h>
 #include <shlobj.h>
+#include <shellapi.h>
 #include <d3d11.h>
 #include <dxgi.h>
 #include <tchar.h>
@@ -18,10 +19,13 @@
 #include <thread>
 #include <fstream>
 #include <algorithm>
+#include <filesystem>
 
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
 namespace NirUI {
+
+static UIApp* g_appInstance = nullptr;
 
 static LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) {
     if (ImGui_ImplWin32_WndProcHandler(hWnd, msg, wParam, lParam))
@@ -35,28 +39,67 @@ static LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
         if ((wParam & 0xfff0) == SC_KEYMENU)
             return 0;
         break;
+    case WM_CLOSE:
+        if (g_appInstance && g_appInstance->ShouldMinimizeToTray()) {
+            g_appInstance->MinimizeToTray();
+            return 0;
+        }
+        if (g_appInstance) {
+            g_appInstance->RequestExit();
+            return 0;
+        }
+        break;
     case WM_DESTROY:
         PostQuitMessage(0);
         return 0;
+    default:
+        if (msg == UIApp::WM_TRAYICON && g_appInstance) {
+            if (LOWORD(lParam) == WM_LBUTTONDBLCLK) {
+                g_appInstance->ShowFromTray();
+            }
+            else if (LOWORD(lParam) == WM_RBUTTONUP) {
+                POINT pt;
+                GetCursorPos(&pt);
+                HMENU hMenu = CreatePopupMenu();
+                AppendMenuW(hMenu, MF_STRING, 1, L"Show NirUI");
+                AppendMenuW(hMenu, MF_SEPARATOR, 0, nullptr);
+                AppendMenuW(hMenu, MF_STRING, 2, L"Exit");
+                SetForegroundWindow(hWnd);
+                int cmd = TrackPopupMenu(hMenu, TPM_RETURNCMD | TPM_NONOTIFY, pt.x, pt.y, 0, hWnd, nullptr);
+                DestroyMenu(hMenu);
+                if (cmd == 1) {
+                    g_appInstance->ShowFromTray();
+                } else if (cmd == 2) {
+                    g_appInstance->RequestExit();
+                }
+            }
+            return 0;
+        }
+        break;
     }
     return DefWindowProc(hWnd, msg, wParam, lParam);
 }
 
 UIApp::UIApp() {
+    g_appInstance = this;
     m_nircmdManager = std::make_unique<NirCmdManager>();
     LoadRecentValues();
     LoadHistory();
+    LoadSettings();
     m_appGroupsManager.SetDataPath(m_nircmdManager->GetAppDataPath());
     m_appGroupsManager.Load();
 }
 
 UIApp::~UIApp() {
+    RemoveTrayIcon();
     SaveRecentValues();
     SaveFavorites();
     SaveHistory();
+    SaveSettings();
     m_appGroupsManager.Save();
     m_svgIcons.Cleanup();
     CleanupD3D();
+    g_appInstance = nullptr;
 }
 
 bool UIApp::InitWindow() {
@@ -382,8 +425,12 @@ void UIApp::DrawMenuBar() {
                 m_showDownloadDialog = true;
             }
             ImGui::Separator();
+            if (ImGui::MenuItem("Settings", "Ctrl+,")) {
+                m_showSettings = !m_showSettings;
+            }
+            ImGui::Separator();
             if (ImGui::MenuItem("Exit", "Alt+F4")) {
-                m_running = false;
+                RequestExit();
             }
             ImGui::EndMenu();
         }
@@ -986,6 +1033,25 @@ void UIApp::DrawSettingsPanel() {
             m_darkTheme = false;
             ApplyLightTheme();
             UpdateTitleBarColor();
+        }
+        
+        ImGui::Spacing();
+        ImGui::Separator();
+        ImGui::Spacing();
+        
+        ImGui::Text("Behavior:");
+        if (ImGui::Checkbox("Minimize to tray on close", &m_minimizeToTray)) {
+            SaveSettings();
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("When closing the window, minimize to system tray instead of exiting");
+        }
+        
+        if (ImGui::Checkbox("Restore frozen windows on exit", &m_unfreezeOnExit)) {
+            SaveSettings();
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Automatically unfreeze all frozen windows when exiting the application");
         }
         
         ImGui::Spacing();
@@ -2063,9 +2129,6 @@ void UIApp::FreezeWindow(const std::string& targetType, const std::string& targe
         ss << std::hex << win.hwnd;
         std::string hexHandle = "0x" + ss.str();
         
-        std::string hideCmd = "win hide handle " + hexHandle;
-        m_nircmdManager->Execute(hideCmd);
-        
         FrozenWindow fw;
         fw.targetType = targetType;
         fw.targetValue = targetValue;
@@ -2075,6 +2138,22 @@ void UIApp::FreezeWindow(const std::string& targetType, const std::string& targe
         fw.hwnd = win.hwnd;
         fw.processId = win.processId;
         fw.isFrozen = true;
+        
+        HWND hwnd = reinterpret_cast<HWND>(win.hwnd);
+        WINDOWPLACEMENT wp = {};
+        wp.length = sizeof(WINDOWPLACEMENT);
+        if (GetWindowPlacement(hwnd, &wp)) {
+            fw.wasMaximized = (wp.showCmd == SW_MAXIMIZE || wp.showCmd == SW_SHOWMAXIMIZED);
+            fw.wasMinimized = (wp.showCmd == SW_MINIMIZE || wp.showCmd == SW_SHOWMINIMIZED);
+            fw.savedX = wp.rcNormalPosition.left;
+            fw.savedY = wp.rcNormalPosition.top;
+            fw.savedWidth = wp.rcNormalPosition.right - wp.rcNormalPosition.left;
+            fw.savedHeight = wp.rcNormalPosition.bottom - wp.rcNormalPosition.top;
+        }
+        
+        std::string hideCmd = "win hide handle " + hexHandle;
+        m_nircmdManager->Execute(hideCmd);
+        
         m_frozenWindows.push_back(fw);
     }
     
@@ -2125,18 +2204,23 @@ void UIApp::UnfreezeWindow(const FrozenWindow& fw) {
     }
     
     if (fw.hwnd != 0) {
-        std::stringstream ss;
-        ss << std::hex << fw.hwnd;
-        std::string hexHandle = "0x" + ss.str();
+        HWND hwnd = reinterpret_cast<HWND>(fw.hwnd);
         
-        std::string showCmd = "win show handle " + hexHandle;
-        m_nircmdManager->Execute(showCmd);
+        ShowWindow(hwnd, SW_SHOW);
         
-        std::string normalCmd = "win normal handle " + hexHandle;
-        m_nircmdManager->Execute(normalCmd);
+        if (fw.wasMaximized) {
+            ShowWindow(hwnd, SW_MAXIMIZE);
+        } else if (fw.wasMinimized) {
+            ShowWindow(hwnd, SW_MINIMIZE);
+        } else {
+            if (fw.savedWidth > 0 && fw.savedHeight > 0) {
+                SetWindowPos(hwnd, nullptr, fw.savedX, fw.savedY, fw.savedWidth, fw.savedHeight, 
+                            SWP_NOZORDER | SWP_NOACTIVATE);
+            }
+            ShowWindow(hwnd, SW_SHOWNORMAL);
+        }
         
-        std::string activateCmd = "win activate handle " + hexHandle;
-        m_nircmdManager->Execute(activateCmd);
+        SetForegroundWindow(hwnd);
     } else {
         std::string showCmd = "win show " + fw.targetType + " \"" + fw.targetValue + "\"";
         m_nircmdManager->Execute(showCmd);
@@ -2362,6 +2446,91 @@ std::string UIApp::GetCurrentTimestamp() {
     std::ostringstream oss;
     oss << std::put_time(&tm_buf, "%H:%M:%S");
     return oss.str();
+}
+
+void UIApp::SaveSettings() {
+    auto path = m_nircmdManager->GetAppDataPath() / "settings.txt";
+    std::ofstream file(path);
+    if (file.is_open()) {
+        file << "minimize_to_tray=" << (m_minimizeToTray ? "1" : "0") << "\n";
+        file << "unfreeze_on_exit=" << (m_unfreezeOnExit ? "1" : "0") << "\n";
+        file << "dark_theme=" << (m_darkTheme ? "1" : "0") << "\n";
+    }
+}
+
+void UIApp::LoadSettings() {
+    auto path = m_nircmdManager->GetAppDataPath() / "settings.txt";
+    std::ifstream file(path);
+    if (file.is_open()) {
+        std::string line;
+        while (std::getline(file, line)) {
+            size_t eq = line.find('=');
+            if (eq != std::string::npos) {
+                std::string key = line.substr(0, eq);
+                std::string value = line.substr(eq + 1);
+                if (key == "minimize_to_tray") m_minimizeToTray = (value == "1");
+                else if (key == "unfreeze_on_exit") m_unfreezeOnExit = (value == "1");
+                else if (key == "dark_theme") m_darkTheme = (value == "1");
+            }
+        }
+    }
+}
+
+void UIApp::CreateTrayIcon() {
+    if (m_trayIconCreated) return;
+    
+    NOTIFYICONDATAW nid = {};
+    nid.cbSize = sizeof(NOTIFYICONDATAW);
+    nid.hWnd = (HWND)m_hwnd;
+    nid.uID = TRAY_UID;
+    nid.uFlags = NIF_ICON | NIF_MESSAGE | NIF_TIP;
+    nid.uCallbackMessage = WM_TRAYICON;
+    nid.hIcon = LoadIconW(GetModuleHandle(nullptr), MAKEINTRESOURCEW(1));
+    wcscpy_s(nid.szTip, L"NirUI - NirCmd Wrapper");
+    
+    Shell_NotifyIconW(NIM_ADD, &nid);
+    m_trayIconCreated = true;
+}
+
+void UIApp::RemoveTrayIcon() {
+    if (!m_trayIconCreated) return;
+    
+    NOTIFYICONDATAW nid = {};
+    nid.cbSize = sizeof(NOTIFYICONDATAW);
+    nid.hWnd = (HWND)m_hwnd;
+    nid.uID = TRAY_UID;
+    
+    Shell_NotifyIconW(NIM_DELETE, &nid);
+    m_trayIconCreated = false;
+}
+
+void UIApp::MinimizeToTray() {
+    CreateTrayIcon();
+    ShowWindow((HWND)m_hwnd, SW_HIDE);
+    m_isMinimizedToTray = true;
+}
+
+void UIApp::ShowFromTray() {
+    ShowWindow((HWND)m_hwnd, SW_SHOW);
+    ShowWindow((HWND)m_hwnd, SW_RESTORE);
+    SetForegroundWindow((HWND)m_hwnd);
+    m_isMinimizedToTray = false;
+}
+
+void UIApp::UnfreezeAllWindows() {
+    for (const auto& fw : m_frozenWindows) {
+        UnfreezeWindow(fw);
+    }
+    m_frozenWindows.clear();
+}
+
+void UIApp::RequestExit() {
+    if (m_unfreezeOnExit && !m_frozenWindows.empty()) {
+        UnfreezeAllWindows();
+    }
+    RemoveTrayIcon();
+    m_running = false;
+    DestroyWindow((HWND)m_hwnd);
 }
 
 } // namespace NirUI
